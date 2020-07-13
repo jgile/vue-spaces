@@ -622,6 +622,49 @@ module.exports = isMasked;
 
 /***/ }),
 
+/***/ "159b":
+/***/ (function(module, exports, __webpack_require__) {
+
+var global = __webpack_require__("da84");
+var DOMIterables = __webpack_require__("fdbc");
+var forEach = __webpack_require__("17c2");
+var createNonEnumerableProperty = __webpack_require__("9112");
+
+for (var COLLECTION_NAME in DOMIterables) {
+  var Collection = global[COLLECTION_NAME];
+  var CollectionPrototype = Collection && Collection.prototype;
+  // some Chrome versions have non-configurable methods on DOMTokenList
+  if (CollectionPrototype && CollectionPrototype.forEach !== forEach) try {
+    createNonEnumerableProperty(CollectionPrototype, 'forEach', forEach);
+  } catch (error) {
+    CollectionPrototype.forEach = forEach;
+  }
+}
+
+
+/***/ }),
+
+/***/ "17c2":
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+var $forEach = __webpack_require__("b727").forEach;
+var arrayMethodIsStrict = __webpack_require__("a640");
+var arrayMethodUsesToLength = __webpack_require__("ae40");
+
+var STRICT_METHOD = arrayMethodIsStrict('forEach');
+var USES_TO_LENGTH = arrayMethodUsesToLength('forEach');
+
+// `Array.prototype.forEach` method implementation
+// https://tc39.github.io/ecma262/#sec-array.prototype.foreach
+module.exports = (!STRICT_METHOD || !USES_TO_LENGTH) ? function forEach(callbackfn /* , thisArg */) {
+  return $forEach(this, callbackfn, arguments.length > 1 ? arguments[1] : undefined);
+} : [].forEach;
+
+
+/***/ }),
+
 /***/ "18d8":
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -1927,6 +1970,23 @@ module.exports = values;
 
 /***/ }),
 
+/***/ "4160":
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+var $ = __webpack_require__("23e7");
+var forEach = __webpack_require__("17c2");
+
+// `Array.prototype.forEach` method
+// https://tc39.github.io/ecma262/#sec-array.prototype.foreach
+$({ target: 'Array', proto: true, forced: [].forEach != forEach }, {
+  forEach: forEach
+});
+
+
+/***/ }),
+
 /***/ "41c6":
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -2272,6 +2332,32 @@ module.exports = {
   // https://tc39.github.io/ecma262/#sec-array.prototype.indexof
   indexOf: createMethod(false)
 };
+
+
+/***/ }),
+
+/***/ "4de4":
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+var $ = __webpack_require__("23e7");
+var $filter = __webpack_require__("b727").filter;
+var arrayMethodHasSpeciesSupport = __webpack_require__("1dde");
+var arrayMethodUsesToLength = __webpack_require__("ae40");
+
+var HAS_SPECIES_SUPPORT = arrayMethodHasSpeciesSupport('filter');
+// Edge 14- issue
+var USES_TO_LENGTH = arrayMethodUsesToLength('filter');
+
+// `Array.prototype.filter` method
+// https://tc39.github.io/ecma262/#sec-array.prototype.filter
+// with adding support of @@species
+$({ target: 'Array', proto: true, forced: !HAS_SPECIES_SUPPORT || !USES_TO_LENGTH }, {
+  filter: function filter(callbackfn /* , thisArg */) {
+    return $filter(this, callbackfn, arguments.length > 1 ? arguments[1] : undefined);
+  }
+});
 
 
 /***/ }),
@@ -4484,6 +4570,74 @@ module.exports = baseHas;
 
 /***/ }),
 
+/***/ "99af":
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+var $ = __webpack_require__("23e7");
+var fails = __webpack_require__("d039");
+var isArray = __webpack_require__("e8b5");
+var isObject = __webpack_require__("861d");
+var toObject = __webpack_require__("7b0b");
+var toLength = __webpack_require__("50c4");
+var createProperty = __webpack_require__("8418");
+var arraySpeciesCreate = __webpack_require__("65f0");
+var arrayMethodHasSpeciesSupport = __webpack_require__("1dde");
+var wellKnownSymbol = __webpack_require__("b622");
+var V8_VERSION = __webpack_require__("2d00");
+
+var IS_CONCAT_SPREADABLE = wellKnownSymbol('isConcatSpreadable');
+var MAX_SAFE_INTEGER = 0x1FFFFFFFFFFFFF;
+var MAXIMUM_ALLOWED_INDEX_EXCEEDED = 'Maximum allowed index exceeded';
+
+// We can't use this feature detection in V8 since it causes
+// deoptimization and serious performance degradation
+// https://github.com/zloirock/core-js/issues/679
+var IS_CONCAT_SPREADABLE_SUPPORT = V8_VERSION >= 51 || !fails(function () {
+  var array = [];
+  array[IS_CONCAT_SPREADABLE] = false;
+  return array.concat()[0] !== array;
+});
+
+var SPECIES_SUPPORT = arrayMethodHasSpeciesSupport('concat');
+
+var isConcatSpreadable = function (O) {
+  if (!isObject(O)) return false;
+  var spreadable = O[IS_CONCAT_SPREADABLE];
+  return spreadable !== undefined ? !!spreadable : isArray(O);
+};
+
+var FORCED = !IS_CONCAT_SPREADABLE_SUPPORT || !SPECIES_SUPPORT;
+
+// `Array.prototype.concat` method
+// https://tc39.github.io/ecma262/#sec-array.prototype.concat
+// with adding support of @@isConcatSpreadable and @@species
+$({ target: 'Array', proto: true, forced: FORCED }, {
+  concat: function concat(arg) { // eslint-disable-line no-unused-vars
+    var O = toObject(this);
+    var A = arraySpeciesCreate(O, 0);
+    var n = 0;
+    var i, k, length, len, E;
+    for (i = -1, length = arguments.length; i < length; i++) {
+      E = i === -1 ? O : arguments[i];
+      if (isConcatSpreadable(E)) {
+        len = toLength(E.length);
+        if (n + len > MAX_SAFE_INTEGER) throw TypeError(MAXIMUM_ALLOWED_INDEX_EXCEEDED);
+        for (k = 0; k < len; k++, n++) if (k in E) createProperty(A, n, E[k]);
+      } else {
+        if (n >= MAX_SAFE_INTEGER) throw TypeError(MAXIMUM_ALLOWED_INDEX_EXCEEDED);
+        createProperty(A, n++, E);
+      }
+    }
+    A.length = n;
+    return A;
+  }
+});
+
+
+/***/ }),
+
 /***/ "99cd":
 /***/ (function(module, exports) {
 
@@ -5065,6 +5219,24 @@ var INCORRECT_ITERATION = !checkCorrectnessOfIteration(function (iterable) {
 $({ target: 'Array', stat: true, forced: INCORRECT_ITERATION }, {
   from: from
 });
+
+
+/***/ }),
+
+/***/ "a640":
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+var fails = __webpack_require__("d039");
+
+module.exports = function (METHOD_NAME, argument) {
+  var method = [][METHOD_NAME];
+  return !!method && fails(function () {
+    // eslint-disable-next-line no-useless-call,no-throw-literal
+    method.call(null, argument || function () { throw 1; }, 1);
+  });
+};
 
 
 /***/ }),
@@ -6378,6 +6550,37 @@ module.exports =
 
 /***/ }),
 
+/***/ "dbb4":
+/***/ (function(module, exports, __webpack_require__) {
+
+var $ = __webpack_require__("23e7");
+var DESCRIPTORS = __webpack_require__("83ab");
+var ownKeys = __webpack_require__("56ef");
+var toIndexedObject = __webpack_require__("fc6a");
+var getOwnPropertyDescriptorModule = __webpack_require__("06cf");
+var createProperty = __webpack_require__("8418");
+
+// `Object.getOwnPropertyDescriptors` method
+// https://tc39.github.io/ecma262/#sec-object.getownpropertydescriptors
+$({ target: 'Object', stat: true, sham: !DESCRIPTORS }, {
+  getOwnPropertyDescriptors: function getOwnPropertyDescriptors(object) {
+    var O = toIndexedObject(object);
+    var getOwnPropertyDescriptor = getOwnPropertyDescriptorModule.f;
+    var keys = ownKeys(O);
+    var result = {};
+    var index = 0;
+    var key, descriptor;
+    while (keys.length > index) {
+      descriptor = getOwnPropertyDescriptor(O, key = keys[index++]);
+      if (descriptor !== undefined) createProperty(result, key, descriptor);
+    }
+    return result;
+  }
+});
+
+
+/***/ }),
+
 /***/ "dc0f":
 /***/ (function(module, exports) {
 
@@ -6914,6 +7117,29 @@ module.exports = memoize;
 
 /***/ }),
 
+/***/ "e439":
+/***/ (function(module, exports, __webpack_require__) {
+
+var $ = __webpack_require__("23e7");
+var fails = __webpack_require__("d039");
+var toIndexedObject = __webpack_require__("fc6a");
+var nativeGetOwnPropertyDescriptor = __webpack_require__("06cf").f;
+var DESCRIPTORS = __webpack_require__("83ab");
+
+var FAILS_ON_PRIMITIVES = fails(function () { nativeGetOwnPropertyDescriptor(1); });
+var FORCED = !DESCRIPTORS || FAILS_ON_PRIMITIVES;
+
+// `Object.getOwnPropertyDescriptor` method
+// https://tc39.github.io/ecma262/#sec-object.getownpropertydescriptor
+$({ target: 'Object', stat: true, forced: FORCED, sham: !DESCRIPTORS }, {
+  getOwnPropertyDescriptor: function getOwnPropertyDescriptor(it, key) {
+    return nativeGetOwnPropertyDescriptor(toIndexedObject(it), key);
+  }
+});
+
+
+/***/ }),
+
 /***/ "e538":
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -7275,14 +7501,160 @@ if (typeof window !== 'undefined') {
 // Indicate to webpack that this file can be concatenated
 /* harmony default export */ var setPublicPath = (null);
 
-// EXTERNAL MODULE: ./node_modules/core-js/modules/es.array.includes.js
-var es_array_includes = __webpack_require__("caad");
+// EXTERNAL MODULE: ./node_modules/core-js/modules/es.symbol.js
+var es_symbol = __webpack_require__("a4d3");
+
+// EXTERNAL MODULE: ./node_modules/core-js/modules/es.array.filter.js
+var es_array_filter = __webpack_require__("4de4");
+
+// EXTERNAL MODULE: ./node_modules/core-js/modules/es.array.for-each.js
+var es_array_for_each = __webpack_require__("4160");
+
+// EXTERNAL MODULE: ./node_modules/core-js/modules/es.object.get-own-property-descriptor.js
+var es_object_get_own_property_descriptor = __webpack_require__("e439");
+
+// EXTERNAL MODULE: ./node_modules/core-js/modules/es.object.get-own-property-descriptors.js
+var es_object_get_own_property_descriptors = __webpack_require__("dbb4");
 
 // EXTERNAL MODULE: ./node_modules/core-js/modules/es.object.keys.js
 var es_object_keys = __webpack_require__("b64b");
 
+// EXTERNAL MODULE: ./node_modules/core-js/modules/web.dom-collections.for-each.js
+var web_dom_collections_for_each = __webpack_require__("159b");
+
+// CONCATENATED MODULE: ./node_modules/@babel/runtime/helpers/esm/defineProperty.js
+function _defineProperty(obj, key, value) {
+  if (key in obj) {
+    Object.defineProperty(obj, key, {
+      value: value,
+      enumerable: true,
+      configurable: true,
+      writable: true
+    });
+  } else {
+    obj[key] = value;
+  }
+
+  return obj;
+}
+// CONCATENATED MODULE: ./node_modules/@babel/runtime/helpers/esm/objectSpread2.js
+
+
+
+
+
+
+
+
+
+function ownKeys(object, enumerableOnly) {
+  var keys = Object.keys(object);
+
+  if (Object.getOwnPropertySymbols) {
+    var symbols = Object.getOwnPropertySymbols(object);
+    if (enumerableOnly) symbols = symbols.filter(function (sym) {
+      return Object.getOwnPropertyDescriptor(object, sym).enumerable;
+    });
+    keys.push.apply(keys, symbols);
+  }
+
+  return keys;
+}
+
+function _objectSpread2(target) {
+  for (var i = 1; i < arguments.length; i++) {
+    var source = arguments[i] != null ? arguments[i] : {};
+
+    if (i % 2) {
+      ownKeys(Object(source), true).forEach(function (key) {
+        _defineProperty(target, key, source[key]);
+      });
+    } else if (Object.getOwnPropertyDescriptors) {
+      Object.defineProperties(target, Object.getOwnPropertyDescriptors(source));
+    } else {
+      ownKeys(Object(source)).forEach(function (key) {
+        Object.defineProperty(target, key, Object.getOwnPropertyDescriptor(source, key));
+      });
+    }
+  }
+
+  return target;
+}
+// CONCATENATED MODULE: ./node_modules/@babel/runtime/helpers/esm/classCallCheck.js
+function _classCallCheck(instance, Constructor) {
+  if (!(instance instanceof Constructor)) {
+    throw new TypeError("Cannot call a class as a function");
+  }
+}
+// CONCATENATED MODULE: ./node_modules/@babel/runtime/helpers/esm/createClass.js
+function _defineProperties(target, props) {
+  for (var i = 0; i < props.length; i++) {
+    var descriptor = props[i];
+    descriptor.enumerable = descriptor.enumerable || false;
+    descriptor.configurable = true;
+    if ("value" in descriptor) descriptor.writable = true;
+    Object.defineProperty(target, descriptor.key, descriptor);
+  }
+}
+
+function _createClass(Constructor, protoProps, staticProps) {
+  if (protoProps) _defineProperties(Constructor.prototype, protoProps);
+  if (staticProps) _defineProperties(Constructor, staticProps);
+  return Constructor;
+}
+// EXTERNAL MODULE: external {"commonjs":"vue","commonjs2":"vue","root":"Vue"}
+var external_commonjs_vue_commonjs2_vue_root_Vue_ = __webpack_require__("8bbf");
+var external_commonjs_vue_commonjs2_vue_root_Vue_default = /*#__PURE__*/__webpack_require__.n(external_commonjs_vue_commonjs2_vue_root_Vue_);
+
+// EXTERNAL MODULE: ./node_modules/lodash/isPlainObject.js
+var isPlainObject = __webpack_require__("60ed");
+var isPlainObject_default = /*#__PURE__*/__webpack_require__.n(isPlainObject);
+
+// EXTERNAL MODULE: ./node_modules/lodash/has.js
+var has = __webpack_require__("3852");
+var has_default = /*#__PURE__*/__webpack_require__.n(has);
+
+// EXTERNAL MODULE: ./node_modules/lodash/get.js
+var get = __webpack_require__("9b02");
+var get_default = /*#__PURE__*/__webpack_require__.n(get);
+
+// EXTERNAL MODULE: ./node_modules/lodash/forEach.js
+var forEach = __webpack_require__("6cd4");
+var forEach_default = /*#__PURE__*/__webpack_require__.n(forEach);
+
+// EXTERNAL MODULE: ./node_modules/lodash/intersection.js
+var intersection = __webpack_require__("d173");
+var intersection_default = /*#__PURE__*/__webpack_require__.n(intersection);
+
+// EXTERNAL MODULE: ./node_modules/lodash/includes.js
+var includes = __webpack_require__("8a30");
+var includes_default = /*#__PURE__*/__webpack_require__.n(includes);
+
+// EXTERNAL MODULE: ./node_modules/lodash/isArray.js
+var isArray = __webpack_require__("6747");
+var isArray_default = /*#__PURE__*/__webpack_require__.n(isArray);
+
+// EXTERNAL MODULE: ./node_modules/lodash/xor.js
+var xor = __webpack_require__("41c6");
+var xor_default = /*#__PURE__*/__webpack_require__.n(xor);
+
+// EXTERNAL MODULE: ./node_modules/core-js/modules/es.array.concat.js
+var es_array_concat = __webpack_require__("99af");
+
+// EXTERNAL MODULE: ./node_modules/core-js/modules/es.array.includes.js
+var es_array_includes = __webpack_require__("caad");
+
+// EXTERNAL MODULE: ./node_modules/core-js/modules/es.array.slice.js
+var es_array_slice = __webpack_require__("fb6a");
+
+// EXTERNAL MODULE: ./node_modules/core-js/modules/es.object.to-string.js
+var es_object_to_string = __webpack_require__("d3b7");
+
 // EXTERNAL MODULE: ./node_modules/core-js/modules/es.object.values.js
 var es_object_values = __webpack_require__("07ac");
+
+// EXTERNAL MODULE: ./node_modules/core-js/modules/es.regexp.to-string.js
+var es_regexp_to_string = __webpack_require__("25f0");
 
 // EXTERNAL MODULE: ./node_modules/core-js/modules/es.string.includes.js
 var es_string_includes = __webpack_require__("2532");
@@ -7290,6 +7662,44 @@ var es_string_includes = __webpack_require__("2532");
 // EXTERNAL MODULE: ./node_modules/core-js/modules/es.string.trim.js
 var es_string_trim = __webpack_require__("498a");
 
+// EXTERNAL MODULE: ./node_modules/core-js/modules/es.symbol.description.js
+var es_symbol_description = __webpack_require__("e01a");
+
+// EXTERNAL MODULE: ./node_modules/core-js/modules/es.symbol.iterator.js
+var es_symbol_iterator = __webpack_require__("d28b");
+
+// EXTERNAL MODULE: ./node_modules/core-js/modules/es.array.iterator.js
+var es_array_iterator = __webpack_require__("e260");
+
+// EXTERNAL MODULE: ./node_modules/core-js/modules/es.string.iterator.js
+var es_string_iterator = __webpack_require__("3ca3");
+
+// EXTERNAL MODULE: ./node_modules/core-js/modules/web.dom-collections.iterator.js
+var web_dom_collections_iterator = __webpack_require__("ddb0");
+
+// CONCATENATED MODULE: ./node_modules/@babel/runtime/helpers/esm/typeof.js
+
+
+
+
+
+
+
+function _typeof(obj) {
+  "@babel/helpers - typeof";
+
+  if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") {
+    _typeof = function _typeof(obj) {
+      return typeof obj;
+    };
+  } else {
+    _typeof = function _typeof(obj) {
+      return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj;
+    };
+  }
+
+  return _typeof(obj);
+}
 // CONCATENATED MODULE: ./node_modules/@babel/runtime/helpers/esm/arrayLikeToArray.js
 function _arrayLikeToArray(arr, len) {
   if (len == null || len > arr.length) len = arr.length;
@@ -7305,29 +7715,8 @@ function _arrayLikeToArray(arr, len) {
 function _arrayWithoutHoles(arr) {
   if (Array.isArray(arr)) return _arrayLikeToArray(arr);
 }
-// EXTERNAL MODULE: ./node_modules/core-js/modules/es.symbol.js
-var es_symbol = __webpack_require__("a4d3");
-
-// EXTERNAL MODULE: ./node_modules/core-js/modules/es.symbol.description.js
-var es_symbol_description = __webpack_require__("e01a");
-
-// EXTERNAL MODULE: ./node_modules/core-js/modules/es.symbol.iterator.js
-var es_symbol_iterator = __webpack_require__("d28b");
-
 // EXTERNAL MODULE: ./node_modules/core-js/modules/es.array.from.js
 var es_array_from = __webpack_require__("a630");
-
-// EXTERNAL MODULE: ./node_modules/core-js/modules/es.array.iterator.js
-var es_array_iterator = __webpack_require__("e260");
-
-// EXTERNAL MODULE: ./node_modules/core-js/modules/es.object.to-string.js
-var es_object_to_string = __webpack_require__("d3b7");
-
-// EXTERNAL MODULE: ./node_modules/core-js/modules/es.string.iterator.js
-var es_string_iterator = __webpack_require__("3ca3");
-
-// EXTERNAL MODULE: ./node_modules/core-js/modules/web.dom-collections.iterator.js
-var web_dom_collections_iterator = __webpack_require__("ddb0");
 
 // CONCATENATED MODULE: ./node_modules/@babel/runtime/helpers/esm/iterableToArray.js
 
@@ -7341,14 +7730,8 @@ var web_dom_collections_iterator = __webpack_require__("ddb0");
 function _iterableToArray(iter) {
   if (typeof Symbol !== "undefined" && Symbol.iterator in Object(iter)) return Array.from(iter);
 }
-// EXTERNAL MODULE: ./node_modules/core-js/modules/es.array.slice.js
-var es_array_slice = __webpack_require__("fb6a");
-
 // EXTERNAL MODULE: ./node_modules/core-js/modules/es.function.name.js
 var es_function_name = __webpack_require__("b0c0");
-
-// EXTERNAL MODULE: ./node_modules/core-js/modules/es.regexp.to-string.js
-var es_regexp_to_string = __webpack_require__("25f0");
 
 // CONCATENATED MODULE: ./node_modules/@babel/runtime/helpers/esm/unsupportedIterableToArray.js
 
@@ -7378,33 +7761,6 @@ function _nonIterableSpread() {
 function _toConsumableArray(arr) {
   return _arrayWithoutHoles(arr) || _iterableToArray(arr) || _unsupportedIterableToArray(arr) || _nonIterableSpread();
 }
-// CONCATENATED MODULE: ./node_modules/@babel/runtime/helpers/esm/typeof.js
-
-
-
-
-
-
-
-function _typeof(obj) {
-  "@babel/helpers - typeof";
-
-  if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") {
-    _typeof = function _typeof(obj) {
-      return typeof obj;
-    };
-  } else {
-    _typeof = function _typeof(obj) {
-      return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj;
-    };
-  }
-
-  return _typeof(obj);
-}
-// EXTERNAL MODULE: external {"commonjs":"vue","commonjs2":"vue","root":"Vue"}
-var external_commonjs_vue_commonjs2_vue_root_Vue_ = __webpack_require__("8bbf");
-var external_commonjs_vue_commonjs2_vue_root_Vue_default = /*#__PURE__*/__webpack_require__.n(external_commonjs_vue_commonjs2_vue_root_Vue_);
-
 // EXTERNAL MODULE: ./node_modules/lodash/_castPath.js
 var _castPath = __webpack_require__("e2e4");
 var _castPath_default = /*#__PURE__*/__webpack_require__.n(_castPath);
@@ -7429,7 +7785,7 @@ var last_default = /*#__PURE__*/__webpack_require__.n(last);
 var _parent = __webpack_require__("8296");
 var _parent_default = /*#__PURE__*/__webpack_require__.n(_parent);
 
-// CONCATENATED MODULE: ./src/lib/util.js
+// CONCATENATED MODULE: ./src/util.js
 
 
 
@@ -7443,6 +7799,12 @@ var _parent_default = /*#__PURE__*/__webpack_require__.n(_parent);
 
 
 
+
+
+
+
+ // A lot of this file is borrowed from alpine.js, by https://github.com/calebporzio.  Thanks!
+// https://github.com/alpinejs/alpine
 
 /**
  * Exact copy of lodash set but replace assignValue with Vue.set
@@ -7494,7 +7856,7 @@ function baseSet(object, path, value, customizer) {
  * @returns {*}
  */
 
-function util_set(object, path, value) {
+function set(object, path, value) {
   return object == null ? object : baseSet(object, path, value);
 }
 /**
@@ -7522,7 +7884,7 @@ function baseUnset(object, path) {
  */
 
 
-function util_unset(object, path) {
+function unset(object, path) {
   return object == null ? true : baseUnset(object, path);
 }
 /**
@@ -7555,8 +7917,9 @@ var nativeBind = function nativeBind(fn, ctx) {
  */
 
 
-var util_bind = Function.prototype.bind ? nativeBind : polyfillBind;
+var bind = Function.prototype.bind ? nativeBind : polyfillBind;
 /**
+ * Largely, if not directly borrowed from alpine.js.  Thanks!
  *
  * @param expression
  * @param context
@@ -7572,7 +7935,9 @@ var util_saferEval = function saferEval(expression, context) {
   }
 
   if (typeof expression === 'function') {
-    return expression.call(context);
+    var _expression;
+
+    return (_expression = expression).apply.apply(_expression, [context].concat(_toConsumableArray(Object.values(additionalHelperVariables))));
   }
 
   if (typeof expression === 'string') {
@@ -7583,7 +7948,7 @@ var util_saferEval = function saferEval(expression, context) {
     return expression;
   }
 
-  return new Function(_toConsumableArray(Object.keys(additionalHelperVariables)), "var __alpine_result; __alpine_result = ".concat(expression, " ; return __alpine_result")).bind(context).apply(void 0, _toConsumableArray(Object.values(additionalHelperVariables)));
+  return new Function(_toConsumableArray(Object.keys(additionalHelperVariables)), "var __space_response; __space_response = ".concat(expression, " ; return __space_response")).bind(context).apply(void 0, _toConsumableArray(Object.values(additionalHelperVariables)));
 };
 /**
  * @param expression
@@ -7596,87 +7961,30 @@ var util_saferEvalNoReturn = function saferEvalNoReturn(expression, context) {
   var additionalHelperVariables = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {};
 
   if (typeof expression === 'function') {
-    var _expression$bind;
-
-    return (_expression$bind = expression.bind(context)).call.apply(_expression$bind, _toConsumableArray(Object.values(additionalHelperVariables)));
-  } // For the cases when users pass only a function reference to the caller: `x-on:click="foo"`
-  // Where "foo" is a function. Also, we'll pass the function the event instance when we call it.
-
+    return expression.bind(context).call(context);
+  }
 
   if (Object.keys(context).includes(expression)) {
-    var methodReference = new Function(_toConsumableArray(Object.keys(additionalHelperVariables)), "return ".concat(expression)).apply(void 0, _toConsumableArray(Object.values(additionalHelperVariables)));
+    var methodReference = new Function(['context'].concat(_toConsumableArray(Object.keys(additionalHelperVariables))), " return context.".concat(expression)).apply(void 0, [context].concat(_toConsumableArray(Object.values(additionalHelperVariables))));
 
     if (typeof methodReference === 'function') {
-      return methodReference.bind(context).call();
+      return methodReference.call(context);
     }
   }
 
   return new Function(_toConsumableArray(Object.keys(additionalHelperVariables)), "".concat(expression)).bind(context).apply(void 0, _toConsumableArray(Object.values(additionalHelperVariables)));
-}; // /**
-//  * @param length
-//  * @returns {string}
-//  */
-// export function randomString(length = 16) {
-//   return Math.round(
-//     Math.pow(36, length + 1) - Math.random() * Math.pow(36, length)
-//   )
-//     .toString(36)
-//     .slice(1);
-// }
-// CONCATENATED MODULE: ./node_modules/@babel/runtime/helpers/esm/classCallCheck.js
-function _classCallCheck(instance, Constructor) {
-  if (!(instance instanceof Constructor)) {
-    throw new TypeError("Cannot call a class as a function");
-  }
+};
+/**
+ * Get a random string.
+ *
+ * @param length
+ * @returns {string}
+ */
+
+function randomString() {
+  var length = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : 16;
+  return 'r' + Math.round(Math.pow(36, length + 1) - Math.random() * Math.pow(36, length)).toString(36).slice(1);
 }
-// CONCATENATED MODULE: ./node_modules/@babel/runtime/helpers/esm/createClass.js
-function _defineProperties(target, props) {
-  for (var i = 0; i < props.length; i++) {
-    var descriptor = props[i];
-    descriptor.enumerable = descriptor.enumerable || false;
-    descriptor.configurable = true;
-    if ("value" in descriptor) descriptor.writable = true;
-    Object.defineProperty(target, descriptor.key, descriptor);
-  }
-}
-
-function _createClass(Constructor, protoProps, staticProps) {
-  if (protoProps) _defineProperties(Constructor.prototype, protoProps);
-  if (staticProps) _defineProperties(Constructor, staticProps);
-  return Constructor;
-}
-// EXTERNAL MODULE: ./node_modules/lodash/isPlainObject.js
-var isPlainObject = __webpack_require__("60ed");
-var isPlainObject_default = /*#__PURE__*/__webpack_require__.n(isPlainObject);
-
-// EXTERNAL MODULE: ./node_modules/lodash/has.js
-var lodash_has = __webpack_require__("3852");
-var has_default = /*#__PURE__*/__webpack_require__.n(lodash_has);
-
-// EXTERNAL MODULE: ./node_modules/lodash/get.js
-var lodash_get = __webpack_require__("9b02");
-var get_default = /*#__PURE__*/__webpack_require__.n(lodash_get);
-
-// EXTERNAL MODULE: ./node_modules/lodash/forEach.js
-var forEach = __webpack_require__("6cd4");
-var forEach_default = /*#__PURE__*/__webpack_require__.n(forEach);
-
-// EXTERNAL MODULE: ./node_modules/lodash/intersection.js
-var intersection = __webpack_require__("d173");
-var intersection_default = /*#__PURE__*/__webpack_require__.n(intersection);
-
-// EXTERNAL MODULE: ./node_modules/lodash/includes.js
-var lodash_includes = __webpack_require__("8a30");
-var includes_default = /*#__PURE__*/__webpack_require__.n(lodash_includes);
-
-// EXTERNAL MODULE: ./node_modules/lodash/isArray.js
-var isArray = __webpack_require__("6747");
-var isArray_default = /*#__PURE__*/__webpack_require__.n(isArray);
-
-// EXTERNAL MODULE: ./node_modules/lodash/xor.js
-var xor = __webpack_require__("41c6");
-var xor_default = /*#__PURE__*/__webpack_require__.n(xor);
-
 // CONCATENATED MODULE: ./src/Space.js
 
 
@@ -7693,114 +8001,96 @@ var xor_default = /*#__PURE__*/__webpack_require__.n(xor);
 
 var Space_Space = /*#__PURE__*/function () {
   function Space(id) {
-    var data = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : null;
-    var methods = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : null;
-
     _classCallCheck(this, Space);
 
     if (id === 'undefined') {
       throw 'Space id is required.';
     }
 
-    this.id = id;
-    this.$data = data ? data : {};
-    this.$methods = methods ? methods : {};
+    this.$id = id;
+    this.$hasData = false;
   }
 
   _createClass(Space, [{
-    key: "setData",
-    value: function setData(data) {
-      external_commonjs_vue_commonjs2_vue_root_Vue_default.a.set(this, '$data', data);
-    }
-  }, {
-    key: "setMethods",
-    value: function setMethods(methods) {
+    key: "$setData",
+    value: function $setData(data) {
       var self = this;
-
-      if (isPlainObject_default()(methods)) {
-        forEach_default()(methods, function (method, name) {
-          external_commonjs_vue_commonjs2_vue_root_Vue_default.a.set(self.$methods, name, method);
-        });
-      }
-    }
-  }, {
-    key: "setWatchers",
-    value: function setWatchers(watchers, context) {
-      var self = this;
-      forEach_default()(util_saferEval(watchers, context, {
-        space: self
-      }), function (method, attribute) {
-        context.$watch(function () {
-          return self.get(attribute);
-        }, method);
+      this.$hasData = true;
+      forEach_default()(data, function (dataItem, name) {
+        external_commonjs_vue_commonjs2_vue_root_Vue_default.a.set(self, name, dataItem);
       });
+      return this;
     }
   }, {
-    key: "unset",
-    value: function unset(key) {
-      util_unset(this.$data, key);
+    key: "$get",
+    value: function $get(key) {
+      return get_default()(this, key);
     }
   }, {
-    key: "get",
-    value: function get(key) {
-      return get_default()(this.$data, key);
-    }
-  }, {
-    key: "has",
-    value: function has(key) {
-      return has_default()(this.$data, key);
-    }
-  }, {
-    key: "includes",
-    value: function includes(key, value) {
-      if (isArray_default()(value)) {
-        return intersection_default()(this.get(key), value).length === value.length;
-      }
-
-      return includes_default()(this.get(key), value);
-    }
-  }, {
-    key: "call",
-    value: function call(key) {
-      if (typeof this.$methods[key] !== 'undefined') {
-        for (var _len = arguments.length, args = new Array(_len > 1 ? _len - 1 : 0), _key = 1; _key < _len; _key++) {
-          args[_key - 1] = arguments[_key];
-        }
-
-        this.$methods[key].bind(this).apply(void 0, args);
-      }
-    }
-  }, {
-    key: "set",
-    value: function set(key, val) {
+    key: "$set",
+    value: function $set(key, val) {
       var _this = this;
 
       if (isPlainObject_default()(key)) {
         forEach_default()(key, function (objVal, objKey) {
-          _this.set(objKey, objVal);
+          _this.$set(objKey, objVal);
         });
-        return;
+      } else if (typeof val === 'function') {
+        set(this, key, val);
+      } else {
+        set(this, key, val);
       }
 
-      if (typeof val === 'function') {
-        return util_set(this.$methods, key, val);
-      } else {
-        return util_set(this.$data, key, val);
-      }
+      return this;
     }
   }, {
-    key: "toggle",
-    value: function toggle(key) {
+    key: "$unset",
+    value: function $unset(key) {
+      unset(this, key);
+      return this;
+    }
+  }, {
+    key: "$has",
+    value: function $has(key) {
+      return has_default()(this, key);
+    }
+  }, {
+    key: "$includes",
+    value: function $includes(key, value) {
+      if (isArray_default()(value)) {
+        return intersection_default()(this.$get(key), value).length === value.length;
+      }
+
+      return includes_default()(this.$get(key), value);
+    }
+  }, {
+    key: "$call",
+    value: function $call(key) {
+      if (typeof this[key] === 'function') {
+        for (var _len = arguments.length, args = new Array(_len > 1 ? _len - 1 : 0), _key = 1; _key < _len; _key++) {
+          args[_key - 1] = arguments[_key];
+        }
+
+        return this[key].bind(this).apply(void 0, args);
+      }
+
+      return false;
+    }
+  }, {
+    key: "$toggle",
+    value: function $toggle(key) {
       var val = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : null;
-      var currentVal = this.get(key);
+      var currentVal = this.$get(key);
 
       if (typeof currentVal === 'boolean') {
-        this.set(key, !currentVal);
+        this.$set(key, !currentVal);
       }
 
       if (isArray_default()(currentVal)) {
-        this.set(key, xor_default()(currentVal, [val]));
+        this.$set(key, xor_default()(currentVal, [val]));
       }
+
+      return this;
     }
   }]);
 
@@ -7815,68 +8105,74 @@ var Space_Space = /*#__PURE__*/function () {
 
 
 
+
 var SpaceManager_SpaceManager = /*#__PURE__*/function () {
   function SpaceManager() {
     _classCallCheck(this, SpaceManager);
 
-    this.spaces = {};
+    this.spaces = external_commonjs_vue_commonjs2_vue_root_Vue_default.a.observable({});
     this.emptySpace = new Space_Space();
   }
 
   _createClass(SpaceManager, [{
+    key: "hasSpace",
+    value: function hasSpace(id) {
+      return id in this.spaces;
+    }
+  }, {
     key: "getSpace",
     value: function getSpace(id) {
-      if (typeof this.spaces[id] === 'undefined') {
+      if (!this.hasSpace(id)) {
         return this.emptySpace;
       }
 
       return this.spaces[id];
     }
   }, {
-    key: "makeSpaceFromFunctionalContext",
-    value: function makeSpaceFromFunctionalContext(context) {
-      return this.makeSpace(context.props.id, context.props.data, context.props.methods, context.props.watch, context.props.init);
+    key: "storeSpace",
+    value: function storeSpace(space) {
+      var reactive = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : true;
+
+      if (reactive) {
+        external_commonjs_vue_commonjs2_vue_root_Vue_default.a.set(this.spaces, space.$id, space);
+      }
+
+      this.spaces[space.$id] = space;
+      return this;
+    }
+  }, {
+    key: "initSpace",
+    value: function initSpace(id, expression, context) {
+      var _this = this;
+
+      context.$nextTick(function () {
+        util_saferEvalNoReturn(expression, _this.getSpace(id), {});
+      });
     }
   }, {
     key: "makeSpace",
-    value: function makeSpace(id, data, methods, watchers) {
-      var init = arguments.length > 4 && arguments[4] !== undefined ? arguments[4] : '';
-      var context = arguments.length > 5 ? arguments[5] : undefined;
+    value: function makeSpace(id) {
+      var data = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : null;
+      var extra = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {};
+      var reactiveStore = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : true;
+      var context = arguments.length > 4 && arguments[4] !== undefined ? arguments[4] : null;
 
       if (typeof id !== 'string') {
-        throw 'An id is required to create a space';
+        id = randomString();
       }
 
-      if (typeof this.spaces[id] !== 'undefined') {
+      if (id in this.spaces) {
         return this.spaces[id];
       }
 
-      if (typeof context === 'undefined') {
-        context = this;
+      var space = external_commonjs_vue_commonjs2_vue_root_Vue_default.a.observable(new Space_Space(id));
+
+      if (data !== null) {
+        space.$setData(util_saferEval(data, context || space, _objectSpread2({}, extra)));
       }
 
-      var space = external_commonjs_vue_commonjs2_vue_root_Vue_default.a.observable(new Space_Space(id, data, methods, watchers));
-
-      if (data) {
-        space.setData(util_saferEval(data, context));
-      }
-
-      if (methods) {
-        space.setMethods(util_saferEval(methods, context));
-      }
-
-      if (watchers) {
-        space.setWatchers(watchers, context);
-      }
-
-      if (init) {
-        util_saferEvalNoReturn(init, {
-          space: space
-        });
-      }
-
-      external_commonjs_vue_commonjs2_vue_root_Vue_default.a.set(this.spaces, id, space);
-      return this.spaces[id];
+      this.storeSpace(space, reactiveStore);
+      return space;
     }
   }]);
 
@@ -7884,13 +8180,58 @@ var SpaceManager_SpaceManager = /*#__PURE__*/function () {
 }();
 
 
+// CONCATENATED MODULE: ./src/SpaceComponent.js
+/* harmony default export */ var SpaceComponent = ({
+  props: {
+    id: {
+      type: String,
+      required: true
+    },
+    init: {
+      type: [String, Function],
+      default: null
+    },
+    data: {
+      type: [String, Object],
+      default: null
+    }
+  },
+  functional: true,
+  render: function render(createElement, context) {
+    var space = window.__v_space_manager.makeSpace(context.props.id, context.props.data, {}, false, context.parent);
+
+    if (context.props.init) {
+      window.__v_space_manager.initSpace(space.$id, context.props.init, context.parent);
+    }
+
+    if (context.data.tag || context.props.tag) {
+      return createElement(context.data.tag || context.props.tag, context.data, typeof context.scopedSlots.default === 'function' ? context.scopedSlots.default(space) : context.scopedSlots.default);
+    }
+
+    return typeof context.scopedSlots.default === 'function' ? context.scopedSlots.default(space) : context.scopedSlots.default;
+  }
+});
+// CONCATENATED MODULE: ./src/SpaceDirective.js
+/* harmony default export */ var SpaceDirective = ({
+  bind: function bind(el, binding, vnode) {
+    if (binding.arg === 'undefined') {
+      throw 'Space directive requires argument as space id';
+    }
+
+    if (binding.modifiers.init) {
+      window.__v_space_manager.initSpace(binding.arg, binding.value, vnode.context);
+    } else {
+      window.__v_space_manager.makeSpace(binding.arg, binding.value, {});
+    }
+  }
+});
 // CONCATENATED MODULE: ./src/index.js
+
 
 
 /* harmony default export */ var src_0 = ({
   install: function install(Vue) {
-    var manager = new SpaceManager_SpaceManager();
-    window.__v_space_manager = Vue.observable(manager);
+    window.__v_space_manager = Vue.observable(new SpaceManager_SpaceManager());
     Vue.mixin({
       methods: {
         $space: function $space(id) {
@@ -7903,68 +8244,8 @@ var SpaceManager_SpaceManager = /*#__PURE__*/function () {
         }
       }
     });
-    Vue.directive('space', {
-      bind: function bind(el, binding, vnode) {
-        if (binding.arg === 'undefined') {
-          throw 'Space directive requires argument as space id';
-        }
-
-        if (binding.modifiers.init) {
-          vnode.context.$nextTick(function () {
-            util_saferEval(binding.expression, vnode.context, {
-              space: binding.arg ? window.__v_space_manager.makeSpace(binding.arg) : {}
-            })();
-          });
-        } else {
-          var space = window.__v_space_manager.makeSpace(binding.arg);
-
-          if (binding.modifiers.watch) {
-            space.setWatchers(binding.expression, vnode.context);
-          } else if (binding.modifiers.methods) {
-            space.setMethods(util_saferEval(binding.expression, vnode.context, {
-              space: space
-            }));
-          } else {
-            space.setData(util_saferEval(binding.value));
-          }
-        }
-      }
-    });
-    Vue.component('space', {
-      props: {
-        id: {
-          type: String
-        },
-        init: {
-          type: String,
-          default: null
-        },
-        methods: {
-          type: [String, Object],
-          default: null
-        },
-        watch: {
-          type: [String, Object],
-          default: null
-        },
-        data: {
-          type: [String, Object],
-          default: null
-        }
-      },
-      functional: true,
-      render: function render(createElement, context) {
-        var space = window.__v_space_manager.makeSpaceFromFunctionalContext(context);
-
-        space.setWatchers(context.props.watch, context.parent);
-
-        if (context.data.tag || context.props.tag) {
-          return createElement(context.data.tag || context.props.tag, context.data, context.scopedSlots.default(space));
-        }
-
-        return context.scopedSlots.default(space);
-      }
-    });
+    Vue.directive('space', SpaceDirective);
+    Vue.component('space', SpaceComponent);
   }
 });
 // CONCATENATED MODULE: ./node_modules/@vue/cli-service/lib/commands/build/entry-lib.js

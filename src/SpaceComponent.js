@@ -2,6 +2,7 @@ export default {
     props: {
         id: {
             type: String,
+            required: true,
         },
         init: {
             type: [String, Function],

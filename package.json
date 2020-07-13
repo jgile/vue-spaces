@@ -1,15 +1,15 @@
 {
-    "name": "vue-space",
-    "description": "Space - Vue component and directive to add context inline.",
-    "version": "0.1.0",
-    "private": true,
+    "name": "vue-spaces",
+    "description": "Spaces - a Vue component and/or directive used to add variables and functions to the DOM without having to create a component.",
+    "version": "1.0.0",
+    "private": false,
     "main": "dist/space.umd.js",
-    "browser": "dist/space.common.js",
-    "jsDelivr": "dist/space.umd.min.js",
-    "unpkg": "dist/space.umd.min.js",
+    "browser": "dist/spaces.common.js",
+    "jsDelivr": "dist/spaces.umd.min.js",
+    "unpkg": "dist/spaces.umd.min.js",
     "scripts": {
         "serve": "vue-cli-service serve public/main.js",
-        "build": "vue-cli-service build --target lib --name space src/index.js",
+        "build": "vue-cli-service build --target lib --name spaces src/index.js",
         "test:unit": "vue-cli-service test:unit",
         "lint": "vue-cli-service lint"
     },
@@ -34,5 +34,19 @@
         "eslint-plugin-vue": "^6.2.2",
         "prettier": "^1.19.1",
         "vue-template-compiler": "^2.6.11"
+    },
+    "bugs": {
+        "url": "https://github.com/jgile/vue-spaces/issues"
+    },
+    "keywords": [
+        "jgile",
+        "vue",
+        "spaces",
+        "space"
+    ],
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/jgile/vue-spaces.git"
     }
 }
