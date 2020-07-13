@@ -9,17 +9,6 @@ This was largely inspired by alpine.js.
 npm install --save vue-spaces
 ```
 
-### Run unit tests
-```
-npm run test:unit
-```
-
-### Lints and fixes files
-```
-npm run lint
-```
-
-
 ## Usage
 Install the plugin:
 ```js
@@ -151,6 +140,17 @@ $space('spaceId').$includes('selection', 'ace') // false
 // someFunction(prop, propTwo)
 $space('spaceId').$call('someFunction', propertyOne, propertyTwo)
 ```
+
+### Run unit tests
+```
+npm run test:unit
+```
+
+### Lints and fixes files
+```
+npm run lint
+```
+
 ### Changelog
 
 Please see [CHANGELOG](CHANGELOG.md) for more information what has changed recently.
