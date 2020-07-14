@@ -1,0 +1,19 @@
+name: Check for stale issues and PRs
+
+on:
+  schedule:
+  - cron: "0 0 * * *"
+
+jobs:
+  stale:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/stale@v1 # See: https://github.com/actions/stale
+      with:
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
+        stale-issue-message: 'This issue is stale.'
+        stale-pr-message: 'This pr is stale.'
+        stale-issue-label: 'no-issue-activity'
+        stale-pr-label: 'no-pr-activity'

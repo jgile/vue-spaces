@@ -1,6 +1,7 @@
-# Vue Space
-Space - a Vue component and/or directive used to add variables and functions to the DOM without having to create a component.
-The spaces are fully reactive, so they can be used in computed attributes and templates.
+# Vue Spaces
+Spaces - a Vue component and/or directive used to define variables and functions directly in your markup, without adding creating a component.  The spaces are fully reactive, so they can be used in computed attributes and templates.
+
+If you have ever needed some javascript to hide/show elements or store a local state, but didn't want to create an entire component, this will do the trick.
 
 This was largely inspired by alpine.js.
 

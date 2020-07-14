@@ -10,7 +10,7 @@
     "scripts": {
         "serve": "vue-cli-service serve public/main.js",
         "build": "vue-cli-service build --target lib --name spaces src/index.js",
-        "test:unit": "vue-cli-service test:unit",
+        "test": "vue-cli-service test:unit",
         "lint": "vue-cli-service lint"
     },
     "dependencies": {
