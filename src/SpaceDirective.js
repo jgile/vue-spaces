@@ -5,9 +5,9 @@ export default {
         }
 
         if (binding.modifiers.init) {
-            window.__v_space_manager.initSpace(binding.arg, binding.value, vnode.context);
+            window.$space.initSpace(binding.arg, binding.value, vnode.context);
         } else {
-            window.__v_space_manager.makeSpace(binding.arg, binding.value, {});
+            window.$space.makeSpace(binding.arg, binding.value, {});
         }
     },
 };
