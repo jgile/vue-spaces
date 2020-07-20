@@ -8182,6 +8182,7 @@ var SpaceManager_SpaceManager = /*#__PURE__*/function () {
 
 // CONCATENATED MODULE: ./src/SpaceComponent.js
 /* harmony default export */ var SpaceComponent = ({
+  functional: true,
   props: {
     id: {
       type: String,
@@ -8196,12 +8197,11 @@ var SpaceManager_SpaceManager = /*#__PURE__*/function () {
       default: null
     }
   },
-  functional: true,
   render: function render(createElement, context) {
-    var space = window.__v_space_manager.makeSpace(context.props.id, context.props.data, {}, false, context.parent);
+    var space = window.$space.makeSpace(context.props.id, context.props.data, {}, false, context.parent);
 
     if (context.props.init) {
-      window.__v_space_manager.initSpace(space.$id, context.props.init, context.parent);
+      window.$space.initSpace(space.$id, context.props.init, context.parent);
     }
 
     if (context.data.tag || context.props.tag) {
@@ -8219,9 +8219,9 @@ var SpaceManager_SpaceManager = /*#__PURE__*/function () {
     }
 
     if (binding.modifiers.init) {
-      window.__v_space_manager.initSpace(binding.arg, binding.value, vnode.context);
+      window.$space.initSpace(binding.arg, binding.value, vnode.context);
     } else {
-      window.__v_space_manager.makeSpace(binding.arg, binding.value, {});
+      window.$space.makeSpace(binding.arg, binding.value, {});
     }
   }
 });
@@ -8231,7 +8231,7 @@ var SpaceManager_SpaceManager = /*#__PURE__*/function () {
 
 /* harmony default export */ var src_0 = ({
   install: function install(Vue) {
-    window.__v_space_manager = Vue.observable(new SpaceManager_SpaceManager());
+    window.$space = Vue.observable(new SpaceManager_SpaceManager());
     Vue.mixin({
       methods: {
         $space: function $space(id) {
@@ -8240,7 +8240,7 @@ var SpaceManager_SpaceManager = /*#__PURE__*/function () {
       },
       computed: {
         $spaces: function $spaces() {
-          return window.__v_space_manager;
+          return window.$space;
         }
       }
     });
@@ -8444,4 +8444,4 @@ module.exports = isSymbol;
 /***/ })
 
 /******/ });
-//# sourceMappingURL=space.common.js.map
+//# sourceMappingURL=spaces.common.js.map
