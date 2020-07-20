@@ -1,17 +1,20 @@
 import SpaceManager from './SpaceManager';
 import SpaceComponent from './SpaceComponent';
 import SpaceDirective from './SpaceDirective';
-import { createObservable } from './util';
 
 export default {
     install(Vue) {
-        const spaceManager = new SpaceManager();
-        window.$space = createObservable(spaceManager);
+        window.$space = Vue.observable(new SpaceManager());
 
         Vue.mixin({
+            methods: {
+                $space(id) {
+                    return this.$spaces.getSpace(id);
+                },
+            },
             computed: {
-                $space() {
-                    return window.$space.spaces;
+                $spaces() {
+                    return window.$space;
                 },
             },
         });
