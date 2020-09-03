@@ -1,7 +1,7 @@
 {
     "name": "vue-spaces",
     "description": "Spaces - a Vue component and/or directive used to add variables and functions to the DOM without having to create a component.",
-    "version": "1.1.0",
+    "version": "1.0.3-0",
     "private": false,
     "main": "dist/space.umd.js",
     "browser": "dist/spaces.common.js",
