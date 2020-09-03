@@ -16,8 +16,9 @@ jobs:
       - uses: actions/setup-node@v1
         with:
           node-version: 12
-      - run: npm i vue          
+      - run: npm i vue
       - run: npm ci
+      - run: npm run build
       - run: npm run test
       - uses: JS-DevTools/npm-publish@v1
         with:
