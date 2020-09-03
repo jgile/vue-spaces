@@ -8190,12 +8190,13 @@ var SpaceManager_SpaceManager = /*#__PURE__*/function () {
 
 
 // CONCATENATED MODULE: ./src/SpaceComponent.js
+
 /* harmony default export */ var SpaceComponent = ({
   functional: true,
   props: {
     id: {
       type: String,
-      required: true
+      required: false
     },
     init: {
       type: [String, Function],
@@ -8207,7 +8208,8 @@ var SpaceManager_SpaceManager = /*#__PURE__*/function () {
     }
   },
   render: function render(createElement, context) {
-    var space = window.$space.makeSpace(context.props.id, context.props.data, {}, false, context.parent);
+    var spaceId = context.props.id ? context.props.id : randomString();
+    var space = window.$space.makeSpace(spaceId, context.props.data, {}, false, context.parent);
 
     if (context.props.init) {
       window.$space.initSpace(space.$id, context.props.init, context.parent);
